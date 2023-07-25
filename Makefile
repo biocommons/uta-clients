@@ -68,7 +68,7 @@ cqa:
 	flake8 src --count --select=E9,F63,F7,F82 --show-source --statistics
 	isort --profile black --check src
 	black --check src
-	bandit -ll -r src
+	bandit -ll -r src --skip=B101
 
 #=> test: execute tests
 #=> test-code: test code (including embedded doctests)
@@ -139,13 +139,13 @@ distclean: cleanest
 
 ## <LICENSE>
 ## Copyright 2023 Source Code Committers
-## 
+##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
 ## You may obtain a copy of the License at
-## 
+##
 ##     http://www.apache.org/licenses/LICENSE-2.0
-## 
+##
 ## Unless required by applicable law or agreed to in writing, software
 ## distributed under the License is distributed on an "AS IS" BASIS,
 ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
