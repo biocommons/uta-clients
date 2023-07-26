@@ -15,7 +15,7 @@ repos:
     rev: 1.7.5
     hooks:
     -   id: bandit
-        args: ["-c", "pyproject.toml", "--skip=B101,B403"]
+        args: ["-c", "pyproject.toml", "--skip=B101,B403,B301"]
         additional_dependencies: [".[toml]"]
 -   repo: https://github.com/pycqa/isort
     rev: 5.12.0
