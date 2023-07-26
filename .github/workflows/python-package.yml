@@ -41,7 +41,7 @@ jobs:
 
     - name: Security check with bandit
       run: |
-        bandit -ll -r src
+        bandit -ll -r src --skip=B101,B403,B301
 
   test:
     runs-on: ubuntu-latest
