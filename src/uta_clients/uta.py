@@ -13,18 +13,17 @@ import os
 import re
 import weakref
 
-import hgvs
 import psycopg2
 import psycopg2.extras
 import psycopg2.pool
 import six
 from bioutils.assemblies import make_ac_name_map
 from bioutils.digests import seq_md5
+from dict_interface import DictInterface
+from helpers import config
+from helpers.exceptions import HGVSDataNotAvailableError, HGVSError
+from helpers.version import hgvs_version
 from six.moves.urllib import parse as urlparse
-
-from ..dataproviders.interface import Interface
-from ..exceptions import HGVSDataNotAvailableError, HGVSError
-from .seqfetcher import SeqFetcher
 
 _logger = logging.getLogger(__name__)
 
@@ -54,15 +53,14 @@ def _get_uta_db_url():
     if "_UTA_URL_KEY" in os.environ:
         url_key = os.environ["_UTA_URL_KEY"]
     else:
-        sdlc = _stage_from_version(hgvs.__version__)
+        sdlc = _stage_from_version(hgvs_version())
         url_key = "public_{sdlc}".format(sdlc=sdlc)
-    return hgvs.global_config["uta"][url_key]
+    return config.global_config["uta"][url_key]
 
 
-def connect(db_url=None, pooling=hgvs.global_config.uta.pooling, application_name=None, mode=None, cache=None):
+def connect(db_url=None, pooling=False, application_name=None, mode=None, cache=None):
     """Connect to a UTA database instance and return a UTA interface instance.
 
-    :param db_url: URL for database connection
     :type db_url: string
     :param pooling: whether to use connection pooling (postgresql only)
     :type pooling: bool
@@ -112,7 +110,7 @@ def connect(db_url=None, pooling=hgvs.global_config.uta.pooling, application_nam
     return conn
 
 
-class UTABase(Interface):
+class UTABase(DictInterface):
     required_version = "1.1"
 
     _queries = {
@@ -181,7 +179,6 @@ class UTABase(Interface):
 
     def __init__(self, url, mode=None, cache=None):
         self.url = url
-        self.seqfetcher = SeqFetcher()
         if mode != "run":
             self._connect()
         super(UTABase, self).__init__(mode, cache)
@@ -217,19 +214,9 @@ class UTABase(Interface):
     def schema_version(self):
         return self._fetchone("select * from meta where key = 'schema_version'")["value"]
 
-    @staticmethod
-    def sequence_source():
-        seqrepo_dir = os.environ.get("HGVS_SEQREPO_DIR")
-        seqrepo_url = os.environ.get("HGVS_SEQREPO_URL")
-        if seqrepo_dir:
-            return seqrepo_dir
-        elif seqrepo_url:
-            return seqrepo_url
-        else:
-            return "seqfetcher"
-
-    def get_seq(self, ac, start_i=None, end_i=None):
-        return self.seqfetcher.fetch_seq(ac, start_i, end_i)
+    # TODO: remove
+    # def get_seq(self, ac, start_i=None, end_i=None):
+    #     return self.seqfetcher.fetch_seq(ac, start_i, end_i)
 
     def get_acs_for_protein_seq(self, seq):
         """
@@ -496,7 +483,7 @@ class UTABase(Interface):
 
 
 class UTA_postgresql(UTABase):
-    def __init__(self, url, pooling=hgvs.global_config.uta.pooling, application_name=None, mode=None, cache=None):
+    def __init__(self, url, pooling=config.global_config.uta.pooling, application_name=None, mode=None, cache=None):
         if url.schema is None:
             raise Exception("No schema name provided in {url}".format(url=url))
         self.application_name = application_name
@@ -529,12 +516,12 @@ class UTA_postgresql(UTABase):
             database=self.url.database,
             user=self.url.username,
             password=self.url.password,
-            application_name=self.application_name + "/" + hgvs.__version__,
+            application_name=self.application_name + "/" + hgvs_version(),
         )
         if self.pooling:
             _logger.info("Using UTA ThreadedConnectionPool")
             self._pool = psycopg2.pool.ThreadedConnectionPool(
-                hgvs.global_config.uta.pool_min, hgvs.global_config.uta.pool_max, **conn_args
+                config.global_config.uta.pool_min, config.global_config.uta.pool_max, **conn_args
             )
         else:
             self._conn = psycopg2.connect(**conn_args)
